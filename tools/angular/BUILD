@@ -1,0 +1,16 @@
+# Forked from: https://github.com/angular/components/blob/ff67a416d19e9237607605bec0d7cc372025387f/tools/angular/BUILD.bazel
+
+load("@npm//@angular/build-tooling/bazel/esbuild:index.bzl", "esbuild_config")
+load(":index.bzl", "create_angular_bundle_targets")
+
+package(default_visibility = ["//visibility:public"])
+
+esbuild_config(
+    name = "esbuild_config",
+    config_file = "esbuild.config.mjs",
+    deps = [
+        "@npm//@angular/build-tooling/shared-scripts/angular-optimization:js_lib",
+    ],
+)
+
+create_angular_bundle_targets()

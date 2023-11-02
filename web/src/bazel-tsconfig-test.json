@@ -1,0 +1,17 @@
+// Forked from: https://github.com/angular/components/blob/ff67a416d19e9237607605bec0d7cc372025387f/src/bazel-tsconfig-test.json
+//
+// TypeScript configuration that will be used to build the test sources for entry-points
+// of the CDK. To avoid duplicate logic, we decided to just have one package-wide tsconfig
+// file that will be  used by Bazel to build the test sources for an entry-point.
+{
+    "extends": "./bazel-tsconfig-build.json",
+    "compilerOptions": {
+        "importHelpers": true,
+        "types": [
+            "jasmine"
+        ]
+    },
+    "bazelOptions": {
+        "suppressTsconfigOverrideWarnings": true
+    }
+}
