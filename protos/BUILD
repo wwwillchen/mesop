@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//builddefs:protos.bzl", "py_proto_library")
+load("//builddefs:protos.bzl", "py_proto_library", "ts_proto_library")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -13,5 +13,10 @@ proto_library(
 
 py_proto_library(
     name = "ui_py_proto",
+    srcs = ["ui.proto"],
+)
+
+ts_proto_library(
+    name = "ui_ts_proto",
     srcs = ["ui.proto"],
 )

@@ -1,9 +1,7 @@
 # Forked from: https://github.com/protocolbuffers/protobuf/blob/c508a40f40c0b4f1e562ef917cd5606d66d9601c/protobuf.bzl#L79
 load("@bazel_skylib//lib:versions.bzl", "versions")
-load("@rules_cc//cc:defs.bzl", "objc_library")
-load("@rules_proto//proto:defs.bzl", "ProtoInfo")
 load("@rules_python//python:defs.bzl", "py_library")
-load("@rules_ruby//ruby:defs.bzl", "ruby_library")
+load("//builddefs:defs.bzl", "ts_library")
 
 def _GetPath(ctx, path):
     if ctx.label.workspace_root:
@@ -43,6 +41,10 @@ def _PyOuts(srcs, use_mypy_plugin = False):
     ret = [s[:-len(".proto")] + "_pb2.py" for s in srcs]
     if use_mypy_plugin:
         ret += [s[:-len(".proto")] + "_pb2.pyi" for s in srcs]
+    return ret
+
+def _TsOuts(srcs):
+    ret = [s[:-len(".proto")] + ".ts" for s in srcs]
     return ret
 
 ProtoGenInfo = provider(
@@ -119,6 +121,8 @@ def _proto_gen_impl(ctx):
         for lang in langs:
             if lang == "python":
                 outs.extend(_PyOuts([src.basename], use_mypy_plugin = use_mypy_plugin))
+            elif lang == "typescript":
+                outs.extend(_TsOuts([src.basename]))
 
             # Otherwise, rely on user-supplied outs.
             args += [("--%s_out=" + path_tpl) % (lang, gen_dir)]
@@ -336,82 +340,47 @@ def py_proto_library(
     """
     internal_py_proto_library(*args, **kwargs)
 
-def _source_proto_library(
+def ts_proto_library(
         name,
         srcs = [],
         deps = [],
-        proto_deps = [],
-        outs = [],
-        lang = None,
-        includes = ["."],
-        protoc = Label("//:protoc"),
+        protoc = Label("@com_google_protobuf//:protoc"),
         testonly = None,
-        visibility = ["//visibility:public"],
-        **kwargs):
-    """Bazel rule to create generated protobuf code from proto source files for
-    languages not well supported by Bazel yet.  This will output the generated
-    code as-is without any compilation.  This is most useful for interpreted
-    languages that don't require it.
+        **kargs):
+    """Bazel rule to create a Python protobuf library from proto source files
 
     NOTE: the rule is only an internal workaround to generate protos. The
     interface may change and the rule may be removed when bazel has introduced
     the native rule.
 
     Args:
-      name: the name of the unsupported_proto_library.
-      srcs: the .proto files to compile.  Note, that for languages where out
-        needs to be provided, only a single source file is allowed.
-      deps: a list of dependency labels; must be unsupported_proto_library.
-      proto_deps: a list of proto file dependencies that don't have a
-        unsupported_proto_library rule.
-      lang: the language to (optionally) generate code for.
-      outs: a list of expected output files.  This is only required for
-        languages where we can't predict the outputs.
-      includes: strings indicating the include path of the .proto files.
+      name: the name of the py_proto_library.
+      srcs: the .proto files of the py_proto_library.
+      deps: a list of dependency labels; must be py_proto_library.
       protoc: the label of the protocol compiler to generate the sources.
       testonly: common rule attribute (see:
           https://bazel.build/reference/be/common-definitions#common-attributes)
-      visibility: the visibility of the generated files.
-      **kwargs: other keyword arguments that are passed to py_library.
+      **kargs: other keyword arguments that are passed to py_library.
 
     """
-    if outs and len(srcs) != 1:
-        fail("Custom outputs only allowed for single proto targets.")
-
-    langs = []
-    if lang != None:
-        langs = [lang]
-
-    full_deps = [d + "_genproto" for d in deps]
-
-    if proto_deps:
-        _proto_gen(
-            name = name + "_deps_genproto",
-            testonly = testonly,
-            srcs = proto_deps,
-            protoc = protoc,
-            includes = includes,
-        )
-        full_deps.append(":%s_deps_genproto" % name)
-
     _proto_gen(
         name = name + "_genproto",
-        srcs = srcs,
-        deps = full_deps,
-        langs = langs,
-        outs = outs,
-        includes = includes,
-        protoc = protoc,
         testonly = testonly,
-        visibility = visibility,
+        srcs = srcs,
+        deps = [s + "_genproto" for s in deps],
+        protoc = protoc,
+        langs = ["typescript"],
+        visibility = ["//visibility:public"],
+        plugin = "//protos/bin:protoc_gen_ts",
+        plugin_language = "ts_proto",
     )
 
-    native.filegroup(
+    ts_library(
         name = name,
-        srcs = [":%s_genproto" % name],
         testonly = testonly,
-        visibility = visibility,
-        **kwargs
+        srcs = [name + "_genproto"],
+        deps = deps,
+        **kargs
     )
 
 def check_protobuf_required_bazel_version():
