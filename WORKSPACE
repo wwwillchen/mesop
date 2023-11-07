@@ -219,3 +219,20 @@ load("@build_bazel_rules_nodejs//toolchains/esbuild:esbuild_repositories.bzl", "
 esbuild_repositories(
     npm_repository = "npm",
 )
+
+#####################
+# TS proto
+#####################
+
+http_archive(
+    name = "rules_typescript_proto",
+    sha256 = "aac6dec2c8d55da2b2c2689b7a2afe44b691555cab32e2eaa2bdd29627d950e9",
+    strip_prefix = "rules_typescript_proto-1.0.1",
+    urls = [
+        "https://github.com/Dig-Doug/rules_typescript_proto/archive/1.0.1.tar.gz",
+    ],
+)
+
+load("@rules_typescript_proto//:index.bzl", "rules_typescript_proto_dependencies")
+
+rules_typescript_proto_dependencies()
