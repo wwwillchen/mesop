@@ -1,7 +1,7 @@
 # Forked from: https://github.com/angular/components/blob/ff67a416d19e9237607605bec0d7cc372025387f/src/dev-app/BUILD.bazel
 
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_web")
-load("//tools:defaults.bzl", "devmode_esbuild", "esbuild_config", "http_server", "ng_module", "sass_binary")
+load("//tools:defaults.bzl", "devmode_esbuild", "esbuild", "esbuild_config", "http_server", "ng_module", "sass_binary")
 load("//tools/angular:index.bzl", "LINKER_PROCESSED_FW_PACKAGES")
 
 package(
@@ -86,13 +86,27 @@ http_server(
     ],
 )
 
+esbuild(
+    name = "prod_bundles",
+    config = ":esbuild_config",
+    entry_points = [":main.ts"],
+    platform = "browser",
+    splitting = True,
+    # We cannot use `ES2017` or higher as that would result in `async/await` not being downleveled.
+    # ZoneJS needs to be able to intercept these as otherwise change detection would not work properly.
+    target = "es2016",
+    deps = LINKER_PROCESSED_FW_PACKAGES + [
+        ":app",
+    ],
+)
+
 # Target that builds a static web package of the dev-app. The web package can be
 # deployed on static hosting services (such as firebase).
 pkg_web(
     name = "web_package",
     srcs = [
-        ":bundles",
         ":dev_app_static_files",
+        ":prod_bundles",
     ],
     additional_root_paths = [
         "npm/node_modules",
