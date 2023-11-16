@@ -14,6 +14,7 @@ ng_module(
     ]),
     deps = [
         # INSERT COMPONENT IMPORTS HERE:
+        "//optic/components/foo_bar:ng",
         "//optic/components/button:ng",
         "//optic/components/checkbox:ng",
         "//optic/components/text:ng",

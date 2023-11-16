@@ -61,17 +61,28 @@ message Key {
 }
 
 message ComponentData {
-    oneof type {
-        TextComponent text = 1;
+    string type = 4;
+    bytes value = 5;
+
+    oneof old_type {
         CheckboxComponent checkbox = 2;
         ButtonComponent button = 3;
+        FooBarComponent foo_bar = 4;
     }
+}
+
+<<<<<<< Updated upstream
+=======
+message FooBarComponent {
+    string foo = 1;
+    string bar = 2;
 }
 
 message TextComponent {
     string text = 1;
 }
 
+>>>>>>> Stashed changes
 message CheckboxComponent {
     string label = 1;
     ActionType on_update = 2;

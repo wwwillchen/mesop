@@ -5,6 +5,7 @@ import { CheckboxComponent } from "../../../optic/components/checkbox/checkbox";
 import { ButtonComponent } from "../../../optic/components/button/button";
 import { TextComponent } from "../../../optic/components/text/text";
 // INSERT COMPONENT TS IMPORTS HERE:
+import { FooBarComponent } from "../../../optic/components/foo_bar/foo_bar";
 import { ComponentLoader } from "./component_loader";
 
 @Component({
@@ -13,6 +14,7 @@ import { ComponentLoader } from "./component_loader";
   standalone: true,
   imports: [
     // INSERT COMPONENT NG IMPORTS HERE:
+    FooBarComponent,
     TextComponent,
     CheckboxComponent,
     ButtonComponent,

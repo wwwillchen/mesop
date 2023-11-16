@@ -2,6 +2,7 @@
 from optic.components.button.button import button as button
 from optic.components.checkbox.checkbox import checkbox as checkbox
 from optic.components.text.text import text as text
+from optic.components.foo_bar.foo_bar import foo_bar as foo_bar
 ### COMPONENTS: END ###
 
 import optic.state as state

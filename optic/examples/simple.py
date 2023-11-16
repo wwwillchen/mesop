@@ -31,6 +31,7 @@ def button_click(state: State, action: op.ClickEvent):
 
 def main():
     state = store.get_state()
+    op.foo_bar(foo="hi")
     op.button(label="click me", on_click=button_click)
     op.text(text=f"{state.count} clicks")
     state.keys
