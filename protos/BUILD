@@ -13,7 +13,7 @@ proto_library(
 
 py_proto_library(
     name = "ui_py_proto",
-    srcs = ["ui.proto"],
+    deps = ["ui_proto"],
 )
 
 jspb_proto_library(

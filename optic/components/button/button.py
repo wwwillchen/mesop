@@ -27,7 +27,7 @@ def button(
             name="button",
             value=button_pb.ButtonType(
                 label=label,
-                on_click_handler_id=handler_type(on_click),
+                on_click_handler3_id=handler_type(on_click),
             ).SerializeToString(),
         ),
     )

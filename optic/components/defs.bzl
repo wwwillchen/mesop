@@ -54,7 +54,7 @@ def optic_component(name, ng_deps = [], py_deps = []):
 
     py_proto_library(
         name = "py_proto",
-        srcs = native.glob(["*.proto"]),
+        deps = [":proto"],
     )
 
     jspb_proto_library(

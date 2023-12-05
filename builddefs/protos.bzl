@@ -1,421 +1,228 @@
-# Forked from: https://github.com/protocolbuffers/protobuf/blob/c508a40f40c0b4f1e562ef917cd5606d66d9601c/protobuf.bzl#L79
-# Forked to support mypy plugin to generate py type stubs
-load("@bazel_skylib//lib:versions.bzl", "versions")
-load("@rules_python//python:defs.bzl", "py_library")
+# Forked from: https://github.com/bazelbuild/rules_python/blob/a1169f1bda00cdf607d0fa173a93d72145d343bc/python/private/proto/py_proto_library.bzl
+#
+# Copyright 2022 The Bazel Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-def _GetPath(ctx, path):
-    if ctx.label.workspace_root:
-        return ctx.label.workspace_root + "/" + path
-    else:
-        return path
+"""The implementation of the `py_proto_library` rule and its aspect."""
 
-def _IsNewExternal(ctx):
-    # Bazel 0.4.4 and older have genfiles paths that look like:
-    #   bazel-out/local-fastbuild/genfiles/external/repo/foo
-    # After the exec root rearrangement, they look like:
-    #   ../repo/bazel-out/local-fastbuild/genfiles/foo
-    return ctx.label.workspace_root.startswith("../")
+load("@rules_proto//proto:defs.bzl", "ProtoInfo", "proto_common")
+load("@rules_python//python:defs.bzl", "PyInfo")
 
-def _GenDir(ctx):
-    if _IsNewExternal(ctx):
-        # We are using the fact that Bazel 0.4.4+ provides repository-relative paths
-        # for ctx.genfiles_dir.
-        return ctx.genfiles_dir.path + (
-            "/" + ctx.attr.includes[0] if ctx.attr.includes and ctx.attr.includes[0] else ""
-        )
+ProtoLangToolchainInfo = proto_common.ProtoLangToolchainInfo
 
-    # This means that we're either in the old version OR the new version in the local repo.
-    # Either way, appending the source path to the genfiles dir works.
-    return ctx.var["GENDIR"] + "/" + _SourceDir(ctx)
-
-def _SourceDir(ctx):
-    if not ctx.attr.includes:
-        return ctx.label.workspace_root
-    if not ctx.attr.includes[0]:
-        return _GetPath(ctx, ctx.label.package)
-    if not ctx.label.package:
-        return _GetPath(ctx, ctx.attr.includes[0])
-    return _GetPath(ctx, ctx.label.package + "/" + ctx.attr.includes[0])
-
-def _PyOuts(srcs, use_mypy_plugin = False):
-    ret = [s[:-len(".proto")] + "_pb2.py" for s in srcs]
-    if use_mypy_plugin:
-        ret += [s[:-len(".proto")] + "_pb2.pyi" for s in srcs]
-    return ret
-
-ProtoGenInfo = provider(
-    fields = ["srcs", "import_flags", "deps"],
+_PyProtoInfo = provider(
+    doc = "Encapsulates information needed by the Python proto rules.",
+    fields = {
+        "imports": """
+            (depset[str]) The field forwarding PyInfo.imports coming from
+            the proto language runtime dependency.""",
+        "runfiles_from_proto_deps": """
+            (depset[File]) Files from the transitive closure implicit proto
+            dependencies""",
+        "transitive_sources": """(depset[File]) The Python sources.""",
+    },
 )
 
-def _proto_gen_impl(ctx):
-    """General implementation for generating protos"""
-    srcs = ctx.files.srcs
-    langs = ctx.attr.langs or []
-    out_type = ctx.attr.out_type
-    deps = depset(direct = ctx.files.srcs)
-    source_dir = _SourceDir(ctx)
-    gen_dir = _GenDir(ctx).rstrip("/")
-    import_flags = []
+def _filter_provider(provider, *attrs):
+    return [dep[provider] for attr in attrs for dep in attr if provider in dep]
 
-    if source_dir:
-        has_sources = any([src.is_source for src in srcs])
-        if has_sources:
-            import_flags.append("-I" + source_dir)
-    else:
-        import_flags.append("-I.")
+def _py_proto_aspect_impl(target, ctx):
+    """Generates and compiles Python code for a proto_library.
 
-    has_generated = any([not src.is_source for src in srcs])
-    if has_generated:
-        import_flags.append("-I" + gen_dir)
+    The function runs protobuf compiler on the `proto_library` target generating
+    a .py file for each .proto file.
 
-    if ctx.attr.includes:
-        for include in ctx.attr.includes:
-            import_flags.append("-I" + _GetPath(ctx, include))
+    Args:
+      target: (Target) A target providing `ProtoInfo`. Usually this means a
+         `proto_library` target, but not always; you must expect to visit
+         non-`proto_library` targets, too.
+      ctx: (RuleContext) The rule context.
 
-    import_flags = depset(direct = import_flags)
+    Returns:
+      ([_PyProtoInfo]) Providers collecting transitive information about
+      generated files.
+    """
+    print("inside aspect")
+    _proto_library = ctx.rule.attr
 
-    for dep in ctx.attr.deps:
-        dep_proto = dep[ProtoGenInfo]
-        if type(dep_proto.import_flags) == "list":
-            import_flags = depset(
-                transitive = [import_flags],
-                direct = dep_proto.import_flags,
-            )
-        else:
-            import_flags = depset(
-                transitive = [import_flags, dep_proto.import_flags],
-            )
-        if type(dep_proto.deps) == "list":
-            deps = depset(transitive = [deps], direct = dep_proto.deps)
-        else:
-            deps = depset(transitive = [deps, dep_proto.deps])
+    # Check Proto file names
+    for proto in target[ProtoInfo].direct_sources:
+        if proto.is_source and "-" in proto.dirname:
+            fail("Cannot generate Python code for a .proto whose path contains '-' ({}).".format(
+                proto.path,
+            ))
 
-    if not langs and not ctx.executable.plugin:
-        return [
-            ProtoGenInfo(
-                srcs = srcs,
-                import_flags = import_flags,
-                deps = deps,
-            ),
-        ]
+    proto_lang_toolchain_info = ctx.attr._aspect_proto_toolchain[ProtoLangToolchainInfo]
+    api_deps = [proto_lang_toolchain_info.runtime]
 
-    generated_files = []
-    for src in srcs:
-        args = []
+    generated_sources = []
+    proto_info = target[ProtoInfo]
+    proto_root = proto_info.proto_source_root
+    if proto_info.direct_sources:
+        # Generate py files
+        generated_sources = proto_common.declare_generated_files(
+            actions = ctx.actions,
+            proto_info = proto_info,
+            extension = "_pb2.py",
+            name_mapper = lambda name: name.replace("-", "_").replace(".", "/"),
+        )
 
-        in_gen_dir = src.root.path == gen_dir
-        if in_gen_dir:
-            import_flags_real = []
-            for f in import_flags.to_list():
-                path = f.replace("-I", "")
-                import_flags_real.append("-I$(realpath -s %s)" % path)
+        generated_sources += proto_common.declare_generated_files(
+            actions = ctx.actions,
+            proto_info = proto_info,
+            extension = "_pb2.pyi",
+            name_mapper = lambda name: name.replace("-", "_").replace(".", "/"),
+        )
 
-        use_mypy_plugin = (ctx.attr.plugin_language == "mypy" and ctx.attr.plugin)
-        path_tpl = "$(realpath %s)" if in_gen_dir else "%s"
+        # Handles multiple repository and virtual import cases
+        if proto_root.startswith(ctx.bin_dir.path):
+            proto_root = proto_root[len(ctx.bin_dir.path) + 1:]
 
-        outs = []
-        for lang in langs:
-            if lang == "python":
-                outs.extend(_PyOuts([src.basename], use_mypy_plugin = use_mypy_plugin))
+        plugin_output = ctx.bin_dir.path + "/" + proto_root
+        proto_root = ctx.workspace_name + "/" + proto_root
+        additional_args = ctx.actions.args()
 
-            # Otherwise, rely on user-supplied outs.
-            args.append(("--%s_out=" + path_tpl) % (lang, gen_dir))
+        # print("dir(generated_sources[0])", generated_sources[0].path)
+        # bin_path = ctx.genfiles_dir.path + "/../../" + "bazel-bin"
+        print("genfiles_dir", ctx.bin_dir.path)
+        additional_args.add(ctx.bin_dir.path + "/.", format = "--mypy_out=%s")
+        proto_common.compile(
+            actions = ctx.actions,
+            proto_info = proto_info,
+            proto_lang_toolchain_info = proto_lang_toolchain_info,
+            generated_files = generated_sources,
+            plugin_output = plugin_output,
+            additional_args = additional_args,
+        )
 
-        if ctx.attr.outs:
-            outs.extend(ctx.attr.outs)
-        outs = [ctx.actions.declare_file(out, sibling = src) for out in outs]
-        generated_files.extend(outs)
+    # Generated sources == Python sources
+    python_sources = generated_sources
 
-        inputs = [src] + deps.to_list()
-        tools = [ctx.executable.protoc]
-        if ctx.executable.plugin:
-            plugin = ctx.executable.plugin
-            lang = ctx.attr.plugin_language
-            if not lang and plugin.basename.startswith("protoc-gen-"):
-                lang = plugin.basename[len("protoc-gen-"):]
-            if not lang:
-                fail("cannot infer the target language of plugin", "plugin_language")
-
-            outdir = "." if in_gen_dir else gen_dir
-
-            if ctx.attr.plugin_options:
-                outdir = ",".join(ctx.attr.plugin_options) + ":" + outdir
-            args.append(("--plugin=protoc-gen-%s=" + path_tpl) % (lang, plugin.path))
-            args.append("--%s_out=%s" % (lang, outdir))
-            tools.append(plugin)
-
-        if not in_gen_dir:
-            ctx.actions.run(
-                inputs = inputs,
-                tools = tools,
-                outputs = outs,
-                arguments = args + import_flags.to_list() + [src.path],
-                executable = ctx.executable.protoc,
-                mnemonic = "ProtoCompile",
-                use_default_shell_env = True,
-            )
-        else:
-            for out in outs:
-                orig_command = " ".join(
-                    ["$(realpath %s)" % ctx.executable.protoc.path] + args +
-                    import_flags_real + [src.basename],
-                )
-                command = ";".join([
-                    'CMD="%s"' % orig_command,
-                    "cd %s" % src.dirname,
-                    "${CMD}",
-                    "cd -",
-                ])
-                generated_out = "/".join([gen_dir, out.basename])
-                if generated_out != out.path:
-                    command += ";mv %s %s" % (generated_out, out.path)
-                ctx.actions.run_shell(
-                    inputs = inputs,
-                    outputs = [out],
-                    command = command,
-                    mnemonic = "ProtoCompile",
-                    tools = tools,
-                    use_default_shell_env = True,
-                )
+    deps = _filter_provider(_PyProtoInfo, getattr(_proto_library, "deps", []))
+    runfiles_from_proto_deps = depset(
+        transitive = [dep[DefaultInfo].default_runfiles.files for dep in api_deps] +
+                     [dep.runfiles_from_proto_deps for dep in deps],
+    )
+    transitive_sources = depset(
+        direct = python_sources,
+        transitive = [dep.transitive_sources for dep in deps],
+    )
 
     return [
-        ProtoGenInfo(
-            srcs = srcs,
-            import_flags = import_flags,
-            deps = deps,
+        _PyProtoInfo(
+            imports = depset(
+                # Adding to PYTHONPATH so the generated modules can be
+                # imported.  This is necessary when there is
+                # strip_import_prefix, the Python modules are generated under
+                # _virtual_imports. But it's undesirable otherwise, because it
+                # will put the repo root at the top of the PYTHONPATH, ahead of
+                # directories added through `imports` attributes.
+                [proto_root] if "_virtual_imports" in proto_root else [],
+                transitive = [dep[PyInfo].imports for dep in api_deps] + [dep.imports for dep in deps],
+            ),
+            runfiles_from_proto_deps = runfiles_from_proto_deps,
+            transitive_sources = transitive_sources,
         ),
-        DefaultInfo(files = depset(generated_files)),
     ]
 
-"""Generates codes from Protocol Buffers definitions.
-
-This rule helps you to implement Skylark macros specific to the target
-language. You should prefer more specific `cc_proto_library `,
-`py_proto_library` and others unless you are adding such wrapper macros.
-
-Args:
-  srcs: Protocol Buffers definition files (.proto) to run the protocol compiler
-    against.
-  deps: a list of dependency labels; must be other proto libraries.
-  includes: a list of include paths to .proto files.
-  protoc: the label of the protocol compiler to generate the sources.
-  plugin: the label of the protocol compiler plugin to be passed to the protocol
-    compiler.
-  plugin_language: the language of the generated sources
-  plugin_options: a list of options to be passed to the plugin
-  langs: generates sources in addition to the ones from the plugin for each
-    specified language.
-  outs: a list of labels of the expected outputs from the protocol compiler.
-  out_type: only generated a single type of source file for languages that have
-    split sources (e.g. *.h and *.cc in C++)
-"""
-_proto_gen = rule(
+_py_proto_aspect = aspect(
+    implementation = _py_proto_aspect_impl,
     attrs = {
-        "srcs": attr.label_list(allow_files = True),
-        "deps": attr.label_list(providers = [ProtoGenInfo]),
-        "includes": attr.string_list(),
-        "protoc": attr.label(
-            cfg = "exec",
-            executable = True,
-            allow_single_file = True,
-            mandatory = True,
-        ),
-        "plugin": attr.label(
-            cfg = "exec",
-            allow_files = True,
-            executable = True,
-        ),
-        "plugin_language": attr.string(),
-        "plugin_options": attr.string_list(),
-        "langs": attr.string_list(),
-        "outs": attr.string_list(),
-        "out_type": attr.string(
-            default = "all",
+        "_aspect_proto_toolchain": attr.label(
+            default = ":python_toolchain",
         ),
     },
-    output_to_genfiles = True,
-    implementation = _proto_gen_impl,
+    attr_aspects = ["deps"],
+    required_providers = [ProtoInfo],
+    provides = [_PyProtoInfo],
 )
 
-_canonical_label_prefix = "@" if str(Label("//:protoc")).startswith("@@") else ""
-
-def _to_label(label_str):
-    """Converts a string to a label using the repository of the calling thread"""
-    if type(label_str) == type(Label("//:foo")):
-        return label_str
-    return Label(_canonical_label_prefix + native.repository_name() + "//" + native.package_name() + ":foo").relative(label_str)
-
-def internal_py_proto_library(
-        name,
-        srcs = [],
-        deps = [],
-        py_libs = [],
-        py_extra_srcs = [],
-        include = None,
-        default_runtime = Label("@com_google_protobuf//:protobuf_python"),
-        protoc = Label("@com_google_protobuf//:protoc"),
-        # use_grpc_plugin = False,
-        testonly = None,
-        **kargs):
-    """Bazel rule to create a Python protobuf library from proto source files
-
-    NOTE: the rule is only an internal workaround to generate protos. The
-    interface may change and the rule may be removed when bazel has introduced
-    the native rule.
+def _py_proto_library_rule(ctx):
+    """Merges results of `py_proto_aspect` in `deps`.
 
     Args:
-      name: the name of the py_proto_library.
-      srcs: the .proto files of the py_proto_library.
-      deps: a list of dependency labels; must be py_proto_library.
-      py_libs: a list of other py_library targets depended by the generated
-          py_library.
-      py_extra_srcs: extra source files that will be added to the output
-          py_library. This attribute is used for internal bootstrapping.
-      include: a string indicating the include path of the .proto files.
-      default_runtime: the implicitly default runtime which will be depended on by
-          the generated py_library target.
-      protoc: the label of the protocol compiler to generate the sources.
-      testonly: common rule attribute (see:
-          https://bazel.build/reference/be/common-definitions#common-attributes)
-      **kargs: other keyword arguments that are passed to py_library.
-
+      ctx: (RuleContext) The rule context.
+    Returns:
+      ([PyInfo, DefaultInfo, OutputGroupInfo])
     """
-    includes = []
-    if include != None:
-        includes = [include]
+    if not ctx.attr.deps:
+        fail("'deps' attribute mustn't be empty.")
 
-    # grpc_python_plugin = None
-    # if use_grpc_plugin:
-    #     grpc_python_plugin = "//external:grpc_python_plugin"
-    #     # Note: Generated grpc code depends on Python grpc module. This dependency
-    #     # is not explicitly listed in py_libs. Instead, host system is assumed to
-    #     # have grpc installed.
-
-    _proto_gen(
-        name = name + "_genproto",
-        testonly = testonly,
-        srcs = srcs,
-        deps = [s + "_genproto" for s in deps],
-        includes = includes,
-        protoc = protoc,
-        langs = ["python"],
-        visibility = ["//:optic_internal"],
-        plugin = "//protos/bin:protoc_gen_mypy",
-        plugin_language = "mypy",
+    pyproto_infos = _filter_provider(_PyProtoInfo, ctx.attr.deps)
+    default_outputs = depset(
+        transitive = [info.transitive_sources for info in pyproto_infos],
     )
 
-    if default_runtime:
-        # Resolve non-local labels
-        labels = [_to_label(lib) for lib in py_libs + deps]
-        if not _to_label(default_runtime) in labels:
-            py_libs = py_libs + [default_runtime]
+    return [
+        DefaultInfo(
+            files = default_outputs,
+            default_runfiles = ctx.runfiles(transitive_files = depset(
+                transitive =
+                    [default_outputs] +
+                    [info.runfiles_from_proto_deps for info in pyproto_infos],
+            )),
+        ),
+        OutputGroupInfo(
+            default = depset(),
+        ),
+        PyInfo(
+            transitive_sources = default_outputs,
+            imports = depset(transitive = [info.imports for info in pyproto_infos]),
+            # Proto always produces 2- and 3- compatible source files
+            has_py2_only_sources = False,
+            has_py3_only_sources = False,
+        ),
+    ]
 
-    py_library(
-        name = name,
-        testonly = testonly,
-        srcs = [name + "_genproto"] + py_extra_srcs,
-        deps = py_libs + deps,
-        imports = includes,
-        **kargs
-    )
+py_proto_library = rule(
+    implementation = _py_proto_library_rule,
+    doc = """
+      Use `py_proto_library` to generate Python libraries from `.proto` files.
 
-def py_proto_library(
-        *args,
-        **kwargs):
-    """Deprecated alias for use before Bazel 5.3.
+      The convention is to name the `py_proto_library` rule `foo_py_pb2`,
+      when it is wrapping `proto_library` rule `foo_proto`.
 
-    Args:
-      *args: the name of the py_proto_library.
-      **kwargs: other keyword arguments that are passed to py_library.
+      `deps` must point to a `proto_library` rule.
 
-    Deprecated:
-      This is provided for backwards compatibility only.  Bazel 5.3 will
-      introduce support for py_proto_library, which should be used instead.
-    """
-    internal_py_proto_library(*args, **kwargs)
+      Example:
 
-def _source_proto_library(
-        name,
-        srcs = [],
-        deps = [],
-        proto_deps = [],
-        outs = [],
-        lang = None,
-        includes = ["."],
-        protoc = Label("//:protoc"),
-        testonly = None,
-        visibility = ["//:optic_internal"],
-        **kwargs):
-    """Bazel rule to create generated protobuf code from proto source files for
-    languages not well supported by Bazel yet.  This will output the generated
-    code as-is without any compilation.  This is most useful for interpreted
-    languages that don't require it.
+```starlark
+py_library(
+    name = "lib",
+    deps = [":foo_py_pb2"],
+)
 
-    NOTE: the rule is only an internal workaround to generate protos. The
-    interface may change and the rule may be removed when bazel has introduced
-    the native rule.
+py_proto_library(
+    name = "foo_py_pb2",
+    deps = [":foo_proto"],
+)
 
-    Args:
-      name: the name of the unsupported_proto_library.
-      srcs: the .proto files to compile.  Note, that for languages where out
-        needs to be provided, only a single source file is allowed.
-      deps: a list of dependency labels; must be unsupported_proto_library.
-      proto_deps: a list of proto file dependencies that don't have a
-        unsupported_proto_library rule.
-      lang: the language to (optionally) generate code for.
-      outs: a list of expected output files.  This is only required for
-        languages where we can't predict the outputs.
-      includes: strings indicating the include path of the .proto files.
-      protoc: the label of the protocol compiler to generate the sources.
-      testonly: common rule attribute (see:
-          https://bazel.build/reference/be/common-definitions#common-attributes)
-      visibility: the visibility of the generated files.
-      **kwargs: other keyword arguments that are passed to py_library.
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+)
+```""",
+    attrs = {
+        "deps": attr.label_list(
+            doc = """
+              The list of `proto_library` rules to generate Python libraries for.
 
-    """
-    if outs and len(srcs) != 1:
-        fail("Custom outputs only allowed for single proto targets.")
-
-    langs = []
-    if lang != None:
-        langs = [lang]
-
-    full_deps = [d + "_genproto" for d in deps]
-
-    if proto_deps:
-        _proto_gen(
-            name = name + "_deps_genproto",
-            testonly = testonly,
-            srcs = proto_deps,
-            protoc = protoc,
-            includes = includes,
-        )
-        full_deps.append(":%s_deps_genproto" % name)
-
-    _proto_gen(
-        name = name + "_genproto",
-        srcs = srcs,
-        deps = full_deps,
-        langs = langs,
-        outs = outs,
-        includes = includes,
-        protoc = protoc,
-        testonly = testonly,
-        visibility = visibility,
-    )
-
-    native.filegroup(
-        name = name,
-        srcs = [":%s_genproto" % name],
-        testonly = testonly,
-        visibility = visibility,
-        **kwargs
-    )
-
-def check_protobuf_required_bazel_version():
-    """For WORKSPACE files, to check the installed version of bazel.
-
-    This ensures bazel supports our approach to proto_library() depending on a
-    copied filegroup. (Fixed in bazel 0.5.4)
-    """
-    versions.check(minimum_bazel_version = "0.5.4")
+              Usually this is just the one target: the proto library of interest.
+              It can be any target providing `ProtoInfo`.""",
+            providers = [ProtoInfo],
+            aspects = [_py_proto_aspect],
+        ),
+    },
+    provides = [PyInfo],
+)

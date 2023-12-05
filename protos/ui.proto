@@ -30,7 +30,7 @@ message UserEvent {
     }
 }
 
-// Sent from Python server to web client.
+// Sent from Python server to web client. Ts
 // Multiple UiResponse messages may be sent in response to 1 UiRequest.
 message UiResponse {
     oneof type {
