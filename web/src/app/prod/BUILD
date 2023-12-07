@@ -27,8 +27,8 @@ ng_js_binary(
 pkg_web(
     name = "web_package",
     srcs = [
-        ":bundles",
         "//web/src/app:static_files",
+        "//web/src/app/prod:bundles",
     ],
     additional_root_paths = [
         "npm/node_modules",
