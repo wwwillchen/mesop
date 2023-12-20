@@ -50,6 +50,7 @@ from mesop.components.select.select import (
 from mesop.components.select.select import (
   select as select,
 )
+from mesop.components.sidenav.sidenav import sidenav as sidenav
 from mesop.components.slide_toggle.slide_toggle import (
   SlideToggleChangeEvent as SlideToggleChangeEvent,
 )

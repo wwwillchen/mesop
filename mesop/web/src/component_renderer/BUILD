@@ -14,6 +14,7 @@ ng_module(
     ]),
     deps = [
         # REF(//scripts/scaffold_component.py):insert_component_import
+        "//mesop/components/sidenav:ng",
         "//mesop/components/slider:ng",
         "//mesop/components/select:ng",
         "//mesop/components/radio:ng",

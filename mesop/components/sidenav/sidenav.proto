@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package mesop.components.sidenav;
+
+message SidenavType {
+    string label = 1;
+}

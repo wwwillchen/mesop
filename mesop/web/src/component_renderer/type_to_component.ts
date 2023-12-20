@@ -1,3 +1,4 @@
+import {SidenavComponent} from '../../../components/sidenav/sidenav';
 import {SliderComponent} from '../../../components/slider/slider';
 import {SelectComponent} from '../../../components/select/select';
 import {RadioComponent} from '../../../components/radio/radio';
@@ -32,6 +33,7 @@ export interface TypeToComponent {
 }
 
 export const typeToComponent = {
+  'sidenav': SidenavComponent,
   'slider': SliderComponent,
   'select': SelectComponent,
   'radio': RadioComponent,
