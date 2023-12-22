@@ -17,7 +17,7 @@ def main():
   with scaffold(url="/buttons"):
     state = me.state(State)
     with me.button(on_click=button_click):
-      me.text(text="default")
+      me.text("hi", bad_arg=1)
     with me.button(on_click=button_click, variant="flat"):
       me.text(text="mat-flat-button")
     with me.button(on_click=button_click, variant="raised"):

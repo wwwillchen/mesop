@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import cast
 
-from pydantic import validate_arguments
+from pydantic import ValidationError, validate_arguments
 
 import mesop.components.text.text_pb2 as text_pb2
 from mesop.component_helpers import insert_component
+from mesop.exceptions import MesopDeveloperException
 
 
 # Must be kept in sync with enum in text.proto
@@ -23,7 +24,21 @@ class Typography(Enum):
   CAPTION = 11
 
 
-@validate_arguments
+def validate(fn):
+  validated_fn = validate_arguments(fn)
+
+  def wrapper(*args, **kw_args):
+    try:
+      return validated_fn(*args, **kw_args)
+    except ValidationError as e:
+      raise MesopDeveloperException(
+        "Look at the docs for FOO component: \n" + str(e)
+      ) from e
+
+  return wrapper
+
+
+@validate
 def text(
   text: str,
   *,

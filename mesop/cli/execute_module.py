@@ -9,6 +9,7 @@ _app_modules: set[str] = set()
 
 def execute_module(module_path: str) -> ModuleType:
   global _app_modules
+  print("_app_modules", _app_modules)
   # Delete all modules that were added after we loaded the module
   # so that when we reload the module, we re-execute any imported modules
   # from the main app module.
