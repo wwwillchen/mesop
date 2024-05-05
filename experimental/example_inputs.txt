@@ -1,0 +1,7 @@
+llm_playground_short|Design a user interface for an "LLM Playground" where users can experiment with and explore the capabilities of large language models.
+llm_playground_long|Design a visually engaging and user-friendly interface for an "LLM Playground" that allows users to select from a curated list of pre-trained LLMs with detailed descriptions, input prompts into a clear text area, customize parameters like temperature and top_k, view generated text output in an organized and visually appealing manner, explore a history of previous interactions, and discover creative prompt examples, making LLM experimentation accessible and inspiring for users of all technical backgrounds.
+sxs|Create a way to view side-by-side the outputs from two large language models and rate which one is better and why.
+text_sum|Create a text summarization tool that allows users to input a long article and generates a concise summary.
+image_transfer|Develop an image style transfer application that allows users to upload an image and apply different artistic styles to it.
+object_detect|Create an app that enables users to upload an image and performs object detection, displaying the detected objects and their bounding boxes on the image.
+sentiment_analysis|Build a sentiment analysis application that allows users to input text and displays the predicted sentiment (positive, negative, or neutral).
