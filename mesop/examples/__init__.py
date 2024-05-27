@@ -2,6 +2,7 @@ from demo import main as main
 from mesop.examples import buttons as buttons
 from mesop.examples import checkbox_and_radio as checkbox_and_radio
 from mesop.examples import composite as composite
+from mesop.examples import diff_edge_case as diff_edge_case
 from mesop.examples import docs as docs
 from mesop.examples import dynamic_values as dynamic_values
 from mesop.examples import error as error
