@@ -18,7 +18,10 @@ package(
 
 py_library(
     name = "server",
-    srcs = glob(["*.py"]),
+    srcs = glob(
+        ["*.py"],
+        exclude = ["state_session.py"],
+    ),
     deps = [
                "//mesop/component_helpers",
                "//mesop/editor",
@@ -26,6 +29,24 @@ py_library(
                "//mesop/protos:ui_py_pb2",
                "//mesop/utils",
                "//mesop/warn",
+           ] + THIRD_PARTY_PY_ABSL_PY +
+           THIRD_PARTY_PY_FLASK +
+           THIRD_PARTY_PY_DOTENV +
+           THIRD_PARTY_PY_MSGPACK,
+    # Note: prod_server.py has a runtime dependency on
+    # //mesop/web/src/app/prod:web_package, so you must include it
+    # in the consuming py_binary's data attribute.
+)
+
+py_library(
+    name = "state_session",
+    srcs = [
+        "config.py",
+        "state_session.py",
+    ],
+    deps = [
+               "//mesop/dataclass_utils",
+               "//mesop/exceptions",
            ] + THIRD_PARTY_PY_ABSL_PY +
            THIRD_PARTY_PY_FLASK +
            THIRD_PARTY_PY_DOTENV +
@@ -44,8 +65,10 @@ py_test(
 py_test(
     name = "state_session_test",
     srcs = ["state_session_test.py"],
-    deps = [":server"] +
-           THIRD_PARTY_PY_PYTEST +
+    deps = [
+               ":server",
+               ":state_session",
+           ] + THIRD_PARTY_PY_PYTEST +
            THIRD_PARTY_PY_FIREBASE_ADMIN +
            THIRD_PARTY_PY_SQLALCHEMY +
            THIRD_PARTY_PY_GREENLET,

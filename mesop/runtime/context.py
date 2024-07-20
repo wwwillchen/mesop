@@ -19,6 +19,8 @@ Handler = Callable[[Any], Generator[None, None, None] | None]
 
 
 class Context:
+  BAD = []
+
   def __init__(
     self,
     get_handler: Callable[[str], Handler | None],
