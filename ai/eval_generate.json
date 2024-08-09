@@ -1,0 +1,118 @@
+[
+  {
+    "name": "chatbot_interface",
+    "question": "Create a chatbot interface that interacts with an LLM API in Mesop."
+  },
+  {
+    "name": "text_summarizer",
+    "question": "Build a text summarization tool using an AI model in Mesop."
+  },
+  {
+    "name": "image_captioning",
+    "question": "Implement an image captioning app that uses AI to generate descriptions."
+  },
+  {
+    "name": "sentiment_analyzer",
+    "question": "Make a sentiment analysis tool for social media posts using Mesop and an AI API."
+  },
+  {
+    "name": "language_translator",
+    "question": "Design a language translation app using a machine learning model in Mesop."
+  },
+  {
+    "name": "code_explainer",
+    "question": "Create an app that uses an LLM to explain code snippets. How would you do this in Mesop?"
+  },
+  {
+    "name": "ai_story_generator",
+    "question": "Develop a story generator app that uses AI to create short stories based on user prompts."
+  },
+  {
+    "name": "text_to_speech",
+    "question": "Implement a text-to-speech converter using an AI model in Mesop."
+  },
+  {
+    "name": "ai_image_editor",
+    "question": "Build an AI-powered image editor with features like style transfer and object removal."
+  },
+  {
+    "name": "llm_playground",
+    "question": "Design an LLM playground where users can experiment with different prompts and parameters."
+  },
+  {
+    "name": "ai_assisted_writing",
+    "question": "Create a writing assistant app that uses AI to suggest improvements and completions."
+  },
+  {
+    "name": "multimodal_qa",
+    "question": "Implement a Q&A system that can answer questions about both text and images using Mesop."
+  },
+  {
+    "name": "ai_music_composer",
+    "question": "Develop an app that generates music using AI based on user-defined parameters."
+  },
+  {
+    "name": "document_classifier",
+    "question": "Build a document classification system using machine learning in Mesop."
+  },
+  {
+    "name": "ai_debate_simulator",
+    "question": "Create an AI debate simulator where two LLMs argue different sides of a topic."
+  },
+  {
+    "name": "ai_meme_generator",
+    "question": "Build a meme generator that uses AI to create captions based on uploaded images."
+  },
+  {
+    "name": "ai_recipe_creator",
+    "question": "Develop a recipe creation tool that generates new recipes based on available ingredients using an LLM."
+  },
+  {
+    "name": "chatbot_personality_switcher",
+    "question": "Make a chatbot interface where users can switch between different AI personalities. Show me how in Mesop."
+  },
+  {
+    "name": "ai_interview_simulator",
+    "question": "Design an AI-powered interview simulator that provides feedback on user responses."
+  },
+  {
+    "name": "text_style_transfer",
+    "question": "Implement a tool that rewrites text in different styles (e.g., formal, casual, poetic) using an LLM."
+  },
+  {
+    "name": "ai_art_critic",
+    "question": "Create an app that uses AI to analyze and critique uploaded artwork."
+  },
+  {
+    "name": "personalized_learning_assistant",
+    "question": "Build a personalized learning assistant that adapts to a user's progress and generates appropriate exercises."
+  },
+  {
+    "name": "ai_dungeon_master",
+    "question": "Develop an AI dungeon master for a text-based role-playing game using Mesop."
+  },
+  {
+    "name": "multimodal_content_generator",
+    "question": "Make a content generation tool that creates both text and images based on user prompts."
+  },
+  {
+    "name": "ai_powered_resume_builder",
+    "question": "Implement a resume builder that uses AI to suggest improvements and tailor content."
+  },
+  {
+    "name": "context_aware_chatbot",
+    "question": "Create a chatbot that maintains context over long conversations. How would you approach this in Mesop?"
+  },
+  {
+    "name": "ai_feedback_analyzer",
+    "question": "Design a tool that analyzes customer feedback using AI and generates summary reports."
+  },
+  {
+    "name": "language_learning_game",
+    "question": "Build a language learning game that uses AI to generate personalized exercises and conversations."
+  },
+  {
+    "name": "ai_powered_legal_assistant",
+    "question": "Develop a legal assistant app that uses AI to answer law-related questions and explain legal concepts."
+  }
+]

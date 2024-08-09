@@ -8,7 +8,7 @@ class EvalQuestion(BaseModel):
   question: str
 
 
-with open("eval_questions.json") as f:
+with open("eval_generate.json") as f:
   eval_questions_str = f.read()
 
 eval_questions = [EvalQuestion(**q) for q in json.loads(eval_questions_str)]
